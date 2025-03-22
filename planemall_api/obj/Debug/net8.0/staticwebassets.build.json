@@ -1,0 +1,11 @@
+{
+  "Version": 1,
+  "Hash": "S2jCImistD1xDmNA7aXqexyq9NKuYYFDbwqVOH8WYYk=",
+  "Source": "planemall_api",
+  "BasePath": "_content/planemall_api",
+  "Mode": "Default",
+  "ManifestType": "Build",
+  "ReferencedProjectsConfiguration": [],
+  "DiscoveryPatterns": [],
+  "Assets": []
+}
