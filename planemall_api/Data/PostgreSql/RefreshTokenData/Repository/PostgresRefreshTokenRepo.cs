@@ -38,6 +38,18 @@ namespace planemall_api.Data.PostgreSql.RefreshTokenData.Repository
             }
         }
 
+        public async Task<RefreshToken?> GetRefreshTokenByTokenAsync(string token)
+        {
+            try
+            {
+                return await _context.RefreshTokens.FirstOrDefaultAsync(x => x.Token == token);
+            }
+            catch (Exception ex)
+            {
+                return null;
+            }
+        }
+
         public async Task<bool> InsertRefreshTokenAsync(RefreshToken cmd)
         {
             try

@@ -35,9 +35,8 @@ namespace planemall_api.Controllers
 
         #region Post Method
 
-
         [HttpPost("register")]
-        public async Task<ActionResult> Register(UserDto request)
+        public async Task<ActionResult<AuthenticationResultDto>> Register(UserDto request)
         {
             var result = new AuthenticationResultDto()
             {
@@ -75,9 +74,8 @@ namespace planemall_api.Controllers
             }
         }
 
-
         [HttpPost("login")]
-        public async Task<ActionResult> Login(UserDto request)
+        public async Task<ActionResult<AuthenticationResultDto>> Login(UserDto request)
         {
             var result = new AuthenticationResultDto()
             {
@@ -110,17 +108,57 @@ namespace planemall_api.Controllers
             }
             catch (Exception ex)
             {
-                result.Errors.Add(ex.Message);
+                result?.Errors.Add(ex.Message);
                 return BadRequest(result);
             }
         }
 
+        [HttpPost]
+        [Route("")]
+        public async Task<ActionResult<AuthenticationResultDto>> RefreshToken([FromBody] TokenRequest tokenRequest)
+        {
+            try
+            {
+                if (ModelState.IsValid)
+                {
+                    var result = VerifyAndGenerateToken(tokenRequest);
+
+                    if(result == null)
+                    {
+                        return BadRequest(new AuthenticationResultDto()
+                        {
+                            Errors = new List<string>()
+                            {
+                                "Invalid tokens",
+                            },
+                            Result = false
+                        });
+                    }
+
+                    return Ok(result);
+                }
+
+                return BadRequest(new AuthenticationResultDto()
+                {
+                    Errors = new List<string>()
+                    {
+                        "Invalid parameters",
+                    },
+                    Result = false
+                });
+            }
+            catch (Exception ex)
+            {
+
+            }
+
+            return Ok();
+        }
 
         #endregion
 
 
         #region Private Functions
-
 
         private void CreatePasswordHash(string password, out byte[] passwordHash, out byte[] passwordSalt)
         {
@@ -131,7 +169,6 @@ namespace planemall_api.Controllers
             }
         }
 
-
         private bool VerifyPasswordHash(string password, byte[] passwordHash, byte[] passwordSalt)
         {
             using (var hmac = new HMACSHA512(passwordSalt))
@@ -140,7 +177,6 @@ namespace planemall_api.Controllers
                 return computedHash.SequenceEqual(passwordHash);
             }
         }
-
 
         private async Task<AuthenticationResultDto?> CreateToken(User user)
         {
@@ -211,6 +247,59 @@ namespace planemall_api.Controllers
             return new string(Enumerable.Repeat(chars, length).Select(s => s[random.Next(s.Length)]).ToArray());
         }
 
+        private async Task<AuthenticationResultDto?> VerifyAndGenerateToken(TokenRequest tokenRequest)
+        {
+            try
+            {
+                var jwtTokenHandler = new JwtSecurityTokenHandler();
+
+                _tokenValidationParameters.ValidateLifetime = false; //for testing
+
+                var tokenInVerification = 
+                    jwtTokenHandler.ValidateToken(tokenRequest.Token, _tokenValidationParameters, out var validatedToken);
+
+                if(validatedToken is JwtSecurityToken jwtSecurityToken)
+                {
+                    var result = jwtSecurityToken.Header.Alg.Equals(SecurityAlgorithms.HmacSha256, StringComparison.InvariantCultureIgnoreCase);
+
+                    if(result == false)
+                        return null;   
+                }
+
+                var tokenUtcExpireDate = tokenInVerification.Claims.FirstOrDefault(x => x.Type == JwtRegisteredClaimNames.Exp)?.Value;
+                if(tokenUtcExpireDate == null)
+                    return null;
+                    
+                var utcExpiryDate = long.Parse(tokenUtcExpireDate);
+                var expiryDate = UnixTimeStampToDateTime(utcExpiryDate);
+
+                if(expiryDate <= DateTime.UtcNow)
+                {
+                    return new AuthenticationResultDto() 
+                    { 
+                        Result = true,
+                        Errors = new List<string>()
+                        {
+                            "Expire token"
+                        }
+                    };
+                }
+
+                var storedToken = await _postgresRefreshToken_repo.GetRefreshTokenByTokenAsync(tokenRequest.RefreshToken);
+            }
+            catch (Exception ex)
+            {
+
+            }
+        }
+
+        private DateTime UnixTimeStampToDateTime(long unixTimeStamp)
+        {
+            var dateTimeVal = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);
+            dateTimeVal = dateTimeVal.AddSeconds(unixTimeStamp).ToUniversalTime();
+
+            return dateTimeVal;
+        }
 
         #endregion
     }

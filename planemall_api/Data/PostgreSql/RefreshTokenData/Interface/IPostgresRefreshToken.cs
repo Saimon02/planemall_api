@@ -8,6 +8,8 @@ namespace planemall_api.Data.PostgreSql.RefreshTokenData.Interface
 
         Task<RefreshToken?> GetRefreshTokenByIdAsync(int id);
 
+        Task<RefreshToken?> GetRefreshTokenByTokenAsync(string token);
+
         Task<bool> InsertRefreshTokenAsync(RefreshToken cmd);
 
         Task<bool> UpdateRefreshTokenAsync(RefreshToken cmd);
