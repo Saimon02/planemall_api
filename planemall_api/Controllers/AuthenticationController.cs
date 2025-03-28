@@ -46,7 +46,7 @@ namespace planemall_api.Controllers
                 Errors = new List<string>()
             };
 
-            if ((await _user_repo.GetUserByEmail(request.email)) is null)
+            if ((await _user_repo.GetUserByEmailAsync(request.email)) is null)
             {
                 this.CreatePasswordHash(request.password, out byte[] passwordHash, out byte[] passwordSalt);
 
@@ -60,7 +60,7 @@ namespace planemall_api.Controllers
                 if (!string.IsNullOrEmpty(request.username))
                     user.Username = request.username;
 
-                if (!await _user_repo.InsertUser(user))
+                if (!await _user_repo.InsertUserAsync(user))
                     return BadRequest(false);
 
                 result = await CreateToken(user);
@@ -87,7 +87,7 @@ namespace planemall_api.Controllers
 
             try
             {
-                var user = await _user_repo.GetUserByUsername(request.username);
+                var user = await _user_repo.GetUserByUsernameAsync(request.username);
 
                 if (user is not null)
                 {
@@ -114,7 +114,7 @@ namespace planemall_api.Controllers
         }
 
         [HttpPost]
-        [Route("")]
+        [Route("refreshtoken")]
         public async Task<ActionResult<AuthenticationResultDto>> RefreshToken([FromBody] TokenRequest tokenRequest)
         {
             try
@@ -277,7 +277,7 @@ namespace planemall_api.Controllers
                 {
                     return new AuthenticationResultDto() 
                     { 
-                        Result = true,
+                        Result = false,
                         Errors = new List<string>()
                         {
                             "Expire token"
@@ -286,10 +286,74 @@ namespace planemall_api.Controllers
                 }
 
                 var storedToken = await _postgresRefreshToken_repo.GetRefreshTokenByTokenAsync(tokenRequest.RefreshToken);
+
+                if(storedToken == null || storedToken.IsUsed || storedToken.IsRevoked)
+                {
+                    return new AuthenticationResultDto()
+                    {
+                        Result = false,
+                        Errors = new List<string>()
+                        {
+                            "Invalid tokens"
+                        }
+                    };
+                }
+
+                var jti = tokenInVerification.Claims.FirstOrDefault(x => x.Type == JwtRegisteredClaimNames.Jti)?.Value;
+
+                if(storedToken.JwtId != jti)
+                {
+                    return new AuthenticationResultDto()
+                    {
+                        Result = false,
+                        Errors = new List<string>()
+                        {
+                            "Invalid tokens"
+                        }
+                    };
+                }
+
+                if(storedToken.ExpiryDate < DateTime.UtcNow)
+                {
+                    return new AuthenticationResultDto()
+                    {
+                        Result = false,
+                        Errors = new List<string>()
+                        {
+                            "Expired tokens"
+                        }
+                    };
+                }
+
+                storedToken.IsUsed = true;
+                await _postgresRefreshToken_repo.UpdateRefreshTokenAsync(storedToken);
+
+                var dbUser = await _user_repo.GetUserByIdAsync(storedToken.UserId);
+                if(dbUser == null)
+                {
+                    return new AuthenticationResultDto()
+                    {
+                        Result = false,
+                        Errors = new List<string>()
+                        {
+                            "Invalid userId"
+                        }
+                    };
+                }
+
+                return await CreateToken(dbUser);
+
             }
             catch (Exception ex)
             {
-
+                return new AuthenticationResultDto()
+                {
+                    Result = false,
+                    Errors = new List<string>()
+                    {
+                        "Server Error"
+                    }
+                };
             }
         }
 

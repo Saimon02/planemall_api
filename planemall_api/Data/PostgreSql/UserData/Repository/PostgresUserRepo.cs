@@ -14,7 +14,7 @@ namespace planemall_api.Postgresql
             _context = context;
         }
 
-        public async Task<User?> GetUserByEmail(string email)
+        public async Task<User?> GetUserByEmailAsync(string email)
         {
             try
             {
@@ -26,7 +26,19 @@ namespace planemall_api.Postgresql
             }
         }
 
-        public async Task<User?> GetUserByUsername(string username)
+        public async Task<User?> GetUserByIdAsync(int Id)
+        {
+            try
+            {
+                return await _context.Users.FirstOrDefaultAsync(x => x.Id == Id);
+            }
+            catch (Exception ex)
+            {
+                return null;
+            }
+        }
+
+        public async Task<User?> GetUserByUsernameAsync(string username)
         {
             try
             {
@@ -38,7 +50,7 @@ namespace planemall_api.Postgresql
             }
         }
 
-        public async Task<bool> InsertUser(User cmd)
+        public async Task<bool> InsertUserAsync(User cmd)
         {
             try
             {

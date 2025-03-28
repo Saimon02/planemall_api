@@ -4,10 +4,12 @@ namespace planemall_api.Interfaces.Models
 {
     public interface IPostgresUser
     {
-        public Task<bool> InsertUser(User cmd);
+        public Task<bool> InsertUserAsync(User cmd);
 
-        public Task<User?> GetUserByUsername(string username);
+        public Task<User?> GetUserByUsernameAsync(string username);
 
-        public Task<User?> GetUserByEmail(string email); 
+        public Task<User?> GetUserByEmailAsync(string email);
+
+        public Task<User?> GetUserByIdAsync(int Id);
     }
 }
