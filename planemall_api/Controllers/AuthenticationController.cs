@@ -121,21 +121,7 @@ namespace planemall_api.Controllers
             {
                 if (ModelState.IsValid)
                 {
-                    var result = VerifyAndGenerateToken(tokenRequest);
-
-                    if(result == null)
-                    {
-                        return BadRequest(new AuthenticationResultDto()
-                        {
-                            Errors = new List<string>()
-                            {
-                                "Invalid tokens",
-                            },
-                            Result = false
-                        });
-                    }
-
-                    return Ok(result);
+                    return Ok(await VerifyAndGenerateToken(tokenRequest));
                 }
 
                 return BadRequest(new AuthenticationResultDto()
@@ -149,10 +135,15 @@ namespace planemall_api.Controllers
             }
             catch (Exception ex)
             {
-
+                return BadRequest(new AuthenticationResultDto()
+                {
+                    Errors = new List<string>()
+                    {
+                        "Server Error",
+                    },
+                    Result = false
+                });
             }
-
-            return Ok();
         }
 
         #endregion
@@ -201,17 +192,32 @@ namespace planemall_api.Controllers
                     new Claim(type: JwtRegisteredClaimNames.Iat, value: DateTime.Now.ToUniversalTime().ToString())
                 }),
                     Expires = DateTime.UtcNow.Add(jwtConfig.ExpireTimeFrame),
-                    SigningCredentials = new SigningCredentials(
-                        new SymmetricSecurityKey(
-                            System.Text.Encoding.UTF8.GetBytes(
-                                jwtConfig.SecretToken)
-                        ),
+                    SigningCredentials = new SigningCredentials
+                    (
+                        new SymmetricSecurityKey(System.Text.Encoding.UTF8.GetBytes(jwtConfig.SecretToken)),
                         SecurityAlgorithms.HmacSha256
                     )
                 };
 
                 var token = TokenHandler.CreateToken(tokenDescriptor: tokenDescriptor);
+                if(token == null)
+                {
+                    return new AuthenticationResultDto()
+                    {
+                        Result = false,
+                        Errors = new List<string>() { "Server Error, token not generated" }
+                    };
+                }
+
                 var jwtToken = TokenHandler.WriteToken(token);
+                if(jwtToken == null)
+                {
+                    return new AuthenticationResultDto()
+                    {
+                        Result = false,
+                        Errors = new List<string>() { "Server Error, jwtToken not generated" }
+                    };
+                }
 
                 var refreshToken = new RefreshToken()
                 {
@@ -229,7 +235,7 @@ namespace planemall_api.Controllers
                 return new AuthenticationResultDto()
                 {
                     Result = true,
-                    Token = jwtToken!,
+                    Token = jwtToken,
                     RefreshToken = refreshToken.Token
                 };
             }
