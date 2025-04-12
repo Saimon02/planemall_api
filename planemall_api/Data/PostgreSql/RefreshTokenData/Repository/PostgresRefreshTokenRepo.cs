@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Newtonsoft.Json.Linq;
 using planemall_api.Data.PostgreSql.RefreshTokenData.Interface;
 using planemall_api.Models;
 using planemall_api.Models.PostgreSql;
@@ -9,9 +10,12 @@ namespace planemall_api.Data.PostgreSql.RefreshTokenData.Repository
     {
         private readonly AppDbContext _context;
 
-        public PostgresRefreshTokenRepo(AppDbContext context)
+        private readonly ILogger<PostgresRefreshTokenRepo> _logger;
+
+        public PostgresRefreshTokenRepo(AppDbContext context, ILogger<PostgresRefreshTokenRepo> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         public async Task<IEnumerable<RefreshToken>?> GetAllRefreshTokensAsync()
@@ -22,6 +26,7 @@ namespace planemall_api.Data.PostgreSql.RefreshTokenData.Repository
             }
             catch (Exception ex)
             {
+                _logger.LogError($"Error in GetAllRefreshTokensAsync(); error details: {ex.Message}");
                 return null;
             }
         }
@@ -34,6 +39,7 @@ namespace planemall_api.Data.PostgreSql.RefreshTokenData.Repository
             }
             catch (Exception ex)
             {
+                _logger.LogError($"Error in GetRefreshTokenByIdAsync(), the Id is {Id}; error details: {ex.Message}");
                 return null;
             }
         }
@@ -46,6 +52,7 @@ namespace planemall_api.Data.PostgreSql.RefreshTokenData.Repository
             }
             catch (Exception ex)
             {
+                _logger.LogError($"Error in GetRefreshTokenByTokenAsync(), the token is {token}; error details: {ex.Message}");
                 return null;
             }
         }
@@ -60,6 +67,7 @@ namespace planemall_api.Data.PostgreSql.RefreshTokenData.Repository
             }
             catch (Exception ex)
             {
+                _logger.LogError($"Error in InsertRefreshTokenAsync(); error details: {ex.Message}");
                 return false;
             }
         }
@@ -74,6 +82,7 @@ namespace planemall_api.Data.PostgreSql.RefreshTokenData.Repository
             }
             catch (Exception ex)
             {
+                _logger.LogError($"Error in UpdateRefreshTokenAsync(), the cmd.Id is {cmd.Id}; error details: {ex.Message}");
                 return false;
             }
         }

@@ -9,9 +9,12 @@ namespace planemall_api.Postgresql
     {
         private readonly AppDbContext _context;
 
-        public PostgresUserRepo(AppDbContext context)
+        private readonly ILogger<PostgresUserRepo> _logger;
+
+        public PostgresUserRepo(AppDbContext context, ILogger<PostgresUserRepo> logger)
         {
             _context = context;
+            _logger = logger;
         }
 
         public async Task<User?> GetUserByEmailAsync(string email)
@@ -22,6 +25,7 @@ namespace planemall_api.Postgresql
             }
             catch (Exception ex)
             {
+                _logger.LogInformation($"Error in GetUserByEmailAsync(), the email is {email}; error details: {ex.Message}");
                 return null;
             }
         }
@@ -34,6 +38,7 @@ namespace planemall_api.Postgresql
             }
             catch (Exception ex)
             {
+                _logger.LogError($"Error in GetUserByIdAsync(), the Id is {Id}; error details: {ex.Message}");
                 return null;
             }
         }
@@ -46,6 +51,7 @@ namespace planemall_api.Postgresql
             }
             catch (Exception ex)
             {
+                _logger.LogError($"Error in GetUserByUsernameAsync(), the username is {username}; error details: {ex.Message}");
                 return null;
             }
         }
@@ -60,6 +66,7 @@ namespace planemall_api.Postgresql
             }
             catch (Exception ex)
             {
+                _logger.LogError($"Error in InsertUserAsync(); error details: {ex.Message}");
                 return false;
             }
         }

@@ -53,12 +53,10 @@ namespace planemall_api.Controllers
                 User user = new User()
                 {
                     Email = request.email,
+                    Username = request.username,
                     Password_Hash = passwordHash,
                     Password_Salt = passwordSalt
                 };
-
-                if (!string.IsNullOrEmpty(request.username))
-                    user.Username = request.username;
 
                 if (!await _user_repo.InsertUserAsync(user))
                     return BadRequest(false);
@@ -69,7 +67,7 @@ namespace planemall_api.Controllers
             }
             else
             {
-                result.Errors.Add("Username already used");
+                result.Errors.Add("Account already exists");
                 return BadRequest(result);
             }
         }
@@ -87,7 +85,7 @@ namespace planemall_api.Controllers
 
             try
             {
-                var user = await _user_repo.GetUserByUsernameAsync(request.username);
+                var user = await _user_repo.GetUserByEmailAsync(request.email);
 
                 if (user is not null)
                 {
@@ -102,7 +100,7 @@ namespace planemall_api.Controllers
                 }
                 else
                 {
-                    result.Errors.Add("Username not found");
+                    result.Errors.Add("User not found");
                     return NotFound(result);
                 }
             }
@@ -183,14 +181,17 @@ namespace planemall_api.Controllers
 
                 var tokenDescriptor = new SecurityTokenDescriptor()
                 {
-                    Subject = new ClaimsIdentity(new[]
-                    {
-                    new Claim(type: "Id", value: user.Id.ToString()),
-                    new Claim(type: JwtRegisteredClaimNames.Sub, value: user.Email),
-                    new Claim(type: JwtRegisteredClaimNames.Email, value: user.Email),
-                    new Claim(type: JwtRegisteredClaimNames.Jti, value: Guid.NewGuid().ToString()),
-                    new Claim(type: JwtRegisteredClaimNames.Iat, value: DateTime.Now.ToUniversalTime().ToString())
-                }),
+                    Subject = new ClaimsIdentity
+                    (
+                        new[]
+                        {
+                            new Claim(type: "Id", value: user.Id.ToString()),
+                            new Claim(type: JwtRegisteredClaimNames.Sub, value: user.Email),
+                            new Claim(type: JwtRegisteredClaimNames.Email, value: user.Email),
+                            new Claim(type: JwtRegisteredClaimNames.Jti, value: Guid.NewGuid().ToString()),
+                            new Claim(type: JwtRegisteredClaimNames.Iat, value: DateTime.Now.ToUniversalTime().ToString())
+                        }
+                    ),
                     Expires = DateTime.UtcNow.Add(jwtConfig.ExpireTimeFrame),
                     SigningCredentials = new SigningCredentials
                     (
@@ -272,24 +273,25 @@ namespace planemall_api.Controllers
                         return null;   
                 }
 
-                var tokenUtcExpireDate = tokenInVerification.Claims.FirstOrDefault(x => x.Type == JwtRegisteredClaimNames.Exp)?.Value;
-                if(tokenUtcExpireDate == null)
-                    return null;
-                    
-                var utcExpiryDate = long.Parse(tokenUtcExpireDate);
-                var expiryDate = UnixTimeStampToDateTime(utcExpiryDate);
+                //var tokenUtcExpireDate = tokenInVerification.Claims.FirstOrDefault(x => x.Type == JwtRegisteredClaimNames.Exp)?.Value;
+                //if(tokenUtcExpireDate == null)
+                //    return null;
 
-                if(expiryDate <= DateTime.UtcNow)
-                {
-                    return new AuthenticationResultDto() 
-                    { 
-                        Result = false,
-                        Errors = new List<string>()
-                        {
-                            "Expire token"
-                        }
-                    };
-                }
+                //I ignore the token'expire date
+                //var utcExpiryDate = long.Parse(tokenUtcExpireDate);
+                //var expiryDate = UnixTimeStampToDateTime(utcExpiryDate);
+
+                //if(expiryDate <= DateTime.UtcNow)
+                //{
+                //    return new AuthenticationResultDto() 
+                //    { 
+                //        Result = false,
+                //        Errors = new List<string>()
+                //        {
+                //            "Expire token"
+                //        }
+                //    };
+                //}
 
                 var storedToken = await _postgresRefreshToken_repo.GetRefreshTokenByTokenAsync(tokenRequest.RefreshToken);
 

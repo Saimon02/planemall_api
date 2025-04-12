@@ -8,6 +8,7 @@ using planemall_api.Interfaces.Models;
 using planemall_api.Models.PostgreSql;
 using planemall_api.Postgresql;
 using System.Text;
+using Serilog;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,6 +25,21 @@ builder.Services.AddSwaggerGen();
 
 builder.Services.AddScoped<IPostgresUser, PostgresUserRepo>();
 builder.Services.AddScoped<IPostgresRefreshToken, PostgresRefreshTokenRepo>();
+
+#endregion
+
+#region Logger
+
+//var logger = new LoggerConfiguration()
+//    .ReadFrom.Configuration(builder.Configuration)
+//    .CreateLogger();
+
+//builder.Logging.AddSerilog(logger);
+
+builder.Host.UseSerilog(configureLogger: (context, configuration) =>
+{
+    configuration.ReadFrom.Configuration(context.Configuration);
+});
 
 #endregion
 
