@@ -12,7 +12,7 @@ using System.Security.Cryptography;
 
 namespace planemall_api.Controllers
 {
-    [Route("api/[controller]")]
+    [Route("api/auth")]
     [EnableCors("FlutterPolicy")]
     [ApiController]
     public class AuthenticationController : ControllerBase
@@ -73,7 +73,7 @@ namespace planemall_api.Controllers
         }
 
         [HttpPost("login")]
-        public async Task<ActionResult<AuthenticationResultDto>> Login(UserDto request)
+        public async Task<ActionResult<AuthenticationResultDto>> Login([FromBody] UserDto request)
         {
             var result = new AuthenticationResultDto()
             {
@@ -85,9 +85,16 @@ namespace planemall_api.Controllers
 
             try
             {
-                var user = await _user_repo.GetUserByEmailAsync(request.email);
+                User? user;
 
-                if (user is not null)
+                user = await _user_repo.GetUserByEmailAsync(request.email);
+
+                if(user == null)
+                {
+                    user = await _user_repo.GetUserByUsernameAsync(request.username);
+                }
+
+                if (user != null)
                 {
                     if (!this.VerifyPasswordHash(request.password, user.Password_Hash, user.Password_Salt))
                     {
