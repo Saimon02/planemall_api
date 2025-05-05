@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Cors;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
 using planemall_api.Configurations.Jwt;
@@ -67,7 +68,7 @@ namespace planemall_api.Controllers
             }
             else
             {
-                result.Errors.Add("Account already exists");
+                result.Errors.Add("Account già eistente");
                 return BadRequest(result);
             }
         }
