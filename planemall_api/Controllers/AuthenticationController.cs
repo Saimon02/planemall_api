@@ -1,8 +1,9 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Cors;
+﻿using Microsoft.AspNetCore.Cors;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.IdentityModel.Tokens;
+using Newtonsoft.Json.Linq;
 using planemall_api.Configurations.Jwt;
+using planemall_api.Data.PostgreSql.PasswordResetTokenData.Interface;
 using planemall_api.Data.PostgreSql.RefreshTokenData.Interface;
 using planemall_api.Dtos;
 using planemall_api.Interfaces.Models;
@@ -20,17 +21,21 @@ namespace planemall_api.Controllers
     {
         private readonly IConfiguration _configuration;
         private readonly TokenValidationParameters _tokenValidationParameters;
+        private readonly ILogger<AuthenticationController> _logger;
 
         private readonly IPostgresUser _user_repo;
-        private readonly IPostgresRefreshToken _postgresRefreshToken_repo;
+        private readonly IRefreshToken _refreshToken_repo;
+        private readonly IPasswordResetTokenData _passwordResetTokenData_repo;
 
-        public AuthenticationController(IConfiguration configuration, TokenValidationParameters tokenValidationParameters, IPostgresUser user_repo, IPostgresRefreshToken postgresRefreshToken_repo)
+        public AuthenticationController(IConfiguration configuration, TokenValidationParameters tokenValidationParameters, ILogger<AuthenticationController> logger, IPostgresUser user_repo, IRefreshToken refreshToken_repo, IPasswordResetTokenData passwordResetTokenData_repo)
         {
             _configuration = configuration;
             _tokenValidationParameters = tokenValidationParameters;
+            _logger = logger;
 
             _user_repo = user_repo;
-            _postgresRefreshToken_repo = postgresRefreshToken_repo;
+            _refreshToken_repo = refreshToken_repo;
+            _passwordResetTokenData_repo = passwordResetTokenData_repo;
         }
 
 
@@ -56,7 +61,7 @@ namespace planemall_api.Controllers
                     Email = request.email,
                     Username = request.username,
                     Password_Hash = passwordHash,
-                    Password_Salt = passwordSalt
+                    Password_Salt = passwordSalt,
                 };
 
                 if (!await _user_repo.InsertUserAsync(user))
@@ -99,7 +104,7 @@ namespace planemall_api.Controllers
                 {
                     if (!this.VerifyPasswordHash(request.password, user.Password_Hash, user.Password_Salt))
                     {
-                        result.Errors.Add("The password is not correct");
+                        result.Errors.Add("La password non e corretta");
                         return BadRequest(result);
                     }
 
@@ -108,7 +113,7 @@ namespace planemall_api.Controllers
                 }
                 else
                 {
-                    result.Errors.Add("User not found");
+                    result.Errors.Add("Utente non trovato");
                     return NotFound(result);
                 }
             }
@@ -119,9 +124,8 @@ namespace planemall_api.Controllers
             }
         }
 
-        [HttpPost]
-        [Route("refreshtoken")]
-        public async Task<ActionResult<AuthenticationResultDto>> RefreshToken([FromBody] TokenRequest tokenRequest)
+        [HttpPost("refreshtoken")]
+        public async Task<ActionResult<AuthenticationResultDto>> RefreshToken([FromBody] TokenRequestDto tokenRequest)
         {
             try
             {
@@ -149,6 +153,56 @@ namespace planemall_api.Controllers
                     },
                     Result = false
                 });
+            }
+        }
+
+        [HttpPost("forgotpassword")]
+        public async Task<ActionResult> ForgotPassword([FromBody] RequestForgotPasswordDto request) 
+        {
+            try
+            {
+                if (ModelState.IsValid)
+                {
+                    var user = await _user_repo.GetUserByEmailAsync(request.email);
+
+                    if(user == null)
+                    {
+                        return NotFound("Utente non esistente!");
+                    }
+
+                    var token = RandomStringGeneration(23);
+
+                    if (string.IsNullOrEmpty(token))
+                    {
+                        
+                        return BadRequest("Server error");
+                    }
+
+                    var insertResetToken = await _passwordResetTokenData_repo.InsertPasswordResetTokenAsync(new PasswordResetToken()
+                    {
+                        UserId = user.Id,
+                        Token = token,
+                        ExpiresAt = DateTime.UtcNow.AddMinutes(5),
+                    });
+
+                    if (!insertResetToken) 
+                    {
+                        return BadRequest("Server error");
+                    }
+
+                    var resetUrl = $"{_configuration["FrontendBaseUrl"]}/reset-password?token={Uri.EscapeDataString(token)}&email={Uri.EscapeDataString(user.Email)}";
+
+                    var body = $"Ciao, clicca qui per reimpostare la password: <a href='{resetUrl}'>Reset Password</a>";
+                    //await _emailSender.SendEmailAsync(user.Email, "Reset della password", body);
+
+                    return Ok();
+                }
+
+                return BadRequest();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest($"{ex.Message}");
             }
         }
 
@@ -236,10 +290,10 @@ namespace planemall_api.Controllers
                     ExpiryDate = DateTime.UtcNow.AddMonths(6),
                     IsRevoked = false,
                     IsUsed = false,
-                    UserId = user.Id
+                    UserId = user.Id,
                 };
 
-                await _postgresRefreshToken_repo.InsertRefreshTokenAsync(refreshToken);
+                await _refreshToken_repo.InsertRefreshTokenAsync(refreshToken);
 
                 return new AuthenticationResultDto()
                 {
@@ -262,7 +316,7 @@ namespace planemall_api.Controllers
             return new string(Enumerable.Repeat(chars, length).Select(s => s[random.Next(s.Length)]).ToArray());
         }
 
-        private async Task<AuthenticationResultDto?> VerifyAndGenerateToken(TokenRequest tokenRequest)
+        private async Task<AuthenticationResultDto?> VerifyAndGenerateToken(TokenRequestDto tokenRequest)
         {
             try
             {
@@ -301,7 +355,7 @@ namespace planemall_api.Controllers
                 //    };
                 //}
 
-                var storedToken = await _postgresRefreshToken_repo.GetRefreshTokenByTokenAsync(tokenRequest.RefreshToken);
+                var storedToken = await _refreshToken_repo.GetRefreshTokenByTokenAsync(tokenRequest.RefreshToken);
 
                 if(storedToken == null || storedToken.IsUsed || storedToken.IsRevoked)
                 {
@@ -342,7 +396,7 @@ namespace planemall_api.Controllers
                 }
 
                 storedToken.IsUsed = true;
-                await _postgresRefreshToken_repo.UpdateRefreshTokenAsync(storedToken);
+                await _refreshToken_repo.UpdateRefreshTokenAsync(storedToken);
 
                 var dbUser = await _user_repo.GetUserByIdAsync(storedToken.UserId);
                 if(dbUser == null)

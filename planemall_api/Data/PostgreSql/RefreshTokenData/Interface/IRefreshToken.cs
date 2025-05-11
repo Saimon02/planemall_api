@@ -2,7 +2,7 @@
 
 namespace planemall_api.Data.PostgreSql.RefreshTokenData.Interface
 {
-    public interface IPostgresRefreshToken
+    public interface IRefreshToken
     {
         Task<IEnumerable<RefreshToken>?> GetAllRefreshTokensAsync();
 

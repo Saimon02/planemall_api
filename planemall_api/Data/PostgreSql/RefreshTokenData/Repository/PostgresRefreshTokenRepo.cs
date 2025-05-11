@@ -1,12 +1,11 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using Newtonsoft.Json.Linq;
 using planemall_api.Data.PostgreSql.RefreshTokenData.Interface;
 using planemall_api.Models;
 using planemall_api.Models.PostgreSql;
 
 namespace planemall_api.Data.PostgreSql.RefreshTokenData.Repository
 {
-    public class PostgresRefreshTokenRepo : IPostgresRefreshToken
+    public class PostgresRefreshTokenRepo : IRefreshToken
     {
         private readonly AppDbContext _context;
 

@@ -14,5 +14,7 @@ namespace planemall_api.Models
         public byte[] Password_Hash { get; set; }
 
         public byte[] Password_Salt { get; set; }
+
+        public DateTime? CreatedAt { get; set; }
     }
 }

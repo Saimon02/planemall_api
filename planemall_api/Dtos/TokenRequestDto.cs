@@ -2,7 +2,7 @@
 
 namespace planemall_api.Dtos
 {
-    public class TokenRequest
+    public class TokenRequestDto
     {
         [Required]
         public string Token { get; set; }

@@ -1,17 +1,15 @@
 ﻿namespace planemall_api.Models
 {
-    public class AuthResult
+    public class PasswordResetToken
     {
         public int Id { get; set; }
 
-        public string UserId { get; set; }
+        public int UserId { get; set; }
 
         public string Token { get; set; }
 
-        public string RefreshToken { get; set; }
-
-        public string JwtId { get; set; }
-
         public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+
+        public DateTime ExpiresAt { get; set; }
     }
 }

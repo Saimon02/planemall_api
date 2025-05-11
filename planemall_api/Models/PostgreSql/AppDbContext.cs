@@ -20,6 +20,8 @@ namespace planemall_api.Models.PostgreSql
 
         public DbSet<RefreshToken> RefreshTokens { get; set; }
 
+        public DbSet<PasswordResetToken> PasswordResetTokens { get; set; }
+
         #endregion
     }
 }

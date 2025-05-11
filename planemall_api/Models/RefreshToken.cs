@@ -17,5 +17,7 @@
         public DateTime AddedDate { get; set; }
 
         public DateTime ExpiryDate { get; set; }
+
+        public DateTime CreatedAt { get; set; }
     }
 }

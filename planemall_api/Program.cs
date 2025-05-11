@@ -9,6 +9,8 @@ using planemall_api.Models.PostgreSql;
 using planemall_api.Postgresql;
 using System.Text;
 using Serilog;
+using planemall_api.Data.PostgreSql.PasswordResetTokenData.Interface;
+using planemall_api.Data.PostgreSql.PasswordResetTokenData.Repository;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -24,7 +26,8 @@ builder.Services.AddSwaggerGen();
 #region Scopes
 
 builder.Services.AddScoped<IPostgresUser, PostgresUserRepo>();
-builder.Services.AddScoped<IPostgresRefreshToken, PostgresRefreshTokenRepo>();
+builder.Services.AddScoped<IRefreshToken, PostgresRefreshTokenRepo>();
+builder.Services.AddScoped<IPasswordResetTokenData, PostgresPasswordResetTokenDataRepo>();
 
 #endregion
 
